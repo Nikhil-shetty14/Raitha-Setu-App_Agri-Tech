@@ -7,7 +7,7 @@
     "icon": "./assets/images/logo.png",
     "scheme": "raithasetu",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
@@ -16,11 +16,6 @@
       }
     },
     "android": {
-      "config": {
-        "googleMaps": {
-          "apiKey": "PASTE_GOOGLE_MAPS_API_KEY_HERE"
-        }
-      },
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -32,7 +27,9 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
       ]
     },
     "web": {
@@ -60,6 +57,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c1543bd6-4d42-4be0-8cc2-e239acb92796"
+      }
+    },
+    "owner": "nikhil14"
   }
 }
