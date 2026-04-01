@@ -99,9 +99,9 @@ export default function HomeScreen() {
   ];
 
   const BANNERS = [
-    { id: '1', title: 'Organic Boost', sub: 'Eco-friendly fertilizer for your fields', img: require('@/assets/images/ad_fertilizer.png') },
-    { id: '2', title: 'New Mahindra Series', sub: 'Upgrade your tractor with 0% EMI', img: require('@/assets/images/ad_tractor.png') },
-    { id: '3', title: 'Karnataka Subsidies', sub: 'Register for seed distribution now', img: require('@/assets/images/ad_subsidy.png') },
+    { id: '1', title: 'Organic Boost', sub: 'Eco-friendly fertilizer for your fields', img: require('@/assets/images/ad_fertilizer.jpg') },
+    { id: '2', title: 'New Mahindra Series', sub: 'Upgrade your tractor with 0% EMI', img: require('@/assets/images/ad_tractor.jpg') },
+    { id: '3', title: 'Karnataka Subsidies', sub: 'Register for seed distribution now', img: require('@/assets/images/ad_subsidy.jpg') },
   ];
 
   const loadWeather = async () => {

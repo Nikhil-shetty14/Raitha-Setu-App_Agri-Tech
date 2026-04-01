@@ -16,9 +16,9 @@ import { ActivityIndicator, Alert } from 'react-native';
 const { width } = Dimensions.get('window');
 
 // LOCAL ASSETS
-const TOMATO_IMG = require('../assets/images/community_tomato.png');
-const WHEAT_IMG = require('../assets/images/community_wheat.png');
-const RICE_IMG = require('../assets/images/community_rice.png');
+const TOMATO_IMG = require('../assets/images/community_tomato.jpg');
+const WHEAT_IMG = require('../assets/images/community_wheat.jpg');
+const RICE_IMG = require('../assets/images/community_rice.jpg');
 
 const INITIAL_POSTS = [
   {
