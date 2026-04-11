@@ -299,29 +299,29 @@ export default function ProfileScreen() {
           <View style={styles.headerActions}>
             <TouchableOpacity style={styles.editBtn} onPress={isEditing ? cancelEdit : startEdit}>
               <IconSymbol name={isEditing ? 'xmark' : 'pencil'} size={14} color="#fff" />
-              <Text style={styles.editBtnText}>{isEditing ? 'Cancel' : t.editProfile}</Text>
+              <Text style={styles.editBtnText}>{isEditing ? t.cancelBtn : t.editProfile}</Text>
             </TouchableOpacity>
             {isEditing && (
               <TouchableOpacity style={[styles.editBtn, { backgroundColor: '#FF6D00', marginLeft: 8 }]} onPress={saveProfile} disabled={isSaving}>
-                {isSaving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.editBtnText}>💾 {t.saveProfile}</Text>}
+                {isSaving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.editBtnText}>💾 {t.saveProfileBtn || t.saveProfile}</Text>}
               </TouchableOpacity>
             )}
           </View>
         </View>
 
         <View style={styles.insightsStrip}>
-          <InsightBox icon="📦" value={String(profile.totalBookings)} label="Bookings" color="#00C853" />
+          <InsightBox icon="📦" value={String(profile.totalBookings)} label={t.bookings} color="#00C853" />
           <View style={styles.insightDivider} />
-          <InsightBox icon="💰" value={`₹${profile.moneySaved}`} label="Saved" color="#FF6D00" />
+          <InsightBox icon="💰" value={`₹${profile.moneySaved}`} label={t.savedMoney} color="#FF6D00" />
           <View style={styles.insightDivider} />
-          <InsightBox icon="✅" value={String(profile.jobsCompleted)} label="Completed" color="#00B0FF" />
+          <InsightBox icon="✅" value={String(profile.jobsCompleted)} label={t.completed} color="#00B0FF" />
         </View>
 
         {/* 1. PROFESSIONAL IDENTITY */}
         <SectionCard title={`💼 ${t.roles || 'Professional Identity'}`} color={c.surface}>
           {!isEditing ? (
             <>
-              <Text style={styles.subCardLabel}>Switch Role (Act As)</Text>
+              <Text style={styles.subCardLabel}>{t.switchRoleLabel}</Text>
               <View style={styles.roleGrid}>
                 {(['Farmer', 'Labour', 'MachineryOwner'] as UserRole[]).map((r) => (
                   <TouchableOpacity
@@ -347,11 +347,11 @@ export default function ProfileScreen() {
                       ]}
                       numberOfLines={2}
                     >
-                      {r === 'MachineryOwner' ? 'Machinery\nOwner' : r}
+                      {r === 'Farmer' ? t.farmer : r === 'Labour' ? t.labourer : t.machineryOwner.replace(' ', '\n')}
                     </Text>
                     {currentRole === r && (
                       <View style={[styles.activeIndicator, { backgroundColor: r === 'Labour' ? '#FF6D00' : c.primary }]}>
-                        <Text style={styles.activeText}>Active</Text>
+                        <Text style={styles.activeText}>{t.activeRole}</Text>
                       </View>
                     )}
                   </TouchableOpacity>
@@ -360,8 +360,8 @@ export default function ProfileScreen() {
             </>
           ) : (
             <View>
-              <Text style={styles.subCardLabel}>Enable My Professional Skills</Text>
-              <Text style={{ fontSize: 12, color: '#666', marginBottom: 15, marginTop: -5 }}>Choose the roles you can perform to get relevant jobs and leads.</Text>
+              <Text style={styles.subCardLabel}>{t.enableProfessionalSkills}</Text>
+              <Text style={{ fontSize: 12, color: '#666', marginBottom: 15, marginTop: -5 }}>{t.chooseRolesHint}</Text>
               <View style={styles.roleGrid}>
                 {(['Farmer', 'Labour', 'MachineryOwner'] as UserRole[]).map(r => {
                   const hasRole = tempProfile.roles?.includes(r);
@@ -381,7 +381,7 @@ export default function ProfileScreen() {
                       <Text
                         style={[styles.roleCardTitle, r === 'MachineryOwner' && { fontSize: 11 }]}
                       >
-                        {r === 'MachineryOwner' ? 'Machinery\nOwner' : r}
+                        {r === 'Farmer' ? t.farmer : r === 'Labour' ? t.labourer : t.machineryOwner.replace(' ', '\n')}
                       </Text>
                       <View style={[styles.checkbox, hasRole && { backgroundColor: c.primary, borderColor: c.primary }]}>
                         {hasRole && <IconSymbol name="checkmark" size={12} color="#fff" />}
@@ -398,17 +398,17 @@ export default function ProfileScreen() {
         <SectionCard title={`👤 ${t.basicInfo}`} color={c.surface}>
           {isEditing ? (
             <>
-              <LabeledInput label="Full Name" placeholder="Enter your full name" value={tempProfile.fullName} onChangeText={(v: string) => setTempProfile(p => ({ ...p, fullName: v }))} />
-              <LabeledInput label="Place / Location" placeholder="Enter place or city" value={tempProfile.village} onChangeText={(v: string) => setTempProfile(p => ({ ...p, village: v }))} />
+              <LabeledInput label={t.fullName} placeholder={t.enterFullName} value={tempProfile.fullName} onChangeText={(v: string) => setTempProfile(p => ({ ...p, fullName: v }))} />
+              <LabeledInput label={t.placeLocation} placeholder={t.enterPlaceCity} value={tempProfile.village} onChangeText={(v: string) => setTempProfile(p => ({ ...p, village: v }))} />
             </>
           ) : (
             <>
-              <InfoRow label="Full Name" value={profile.fullName || 'Not set'} icon="🧑" />
-              <InfoRow label="Place" value={profile.village || 'Not set'} icon="🏘️" />
+              <InfoRow label={t.fullName} value={profile.fullName || t.notSet} icon="🧑" />
+              <InfoRow label={t.placeLocation} value={profile.village || t.notSet} icon="🏘️" />
             </>
           )}
-          <InfoRow label="Mobile" value={mobile} icon="📱" readonly />
-          <InfoRow label="Farmer ID" value={farmerId} icon="🪪" readonly />
+          <InfoRow label={t.mobileLabel} value={mobile} icon="📱" readonly />
+          <InfoRow label={t.farmerIdLabel} value={farmerId} icon="🪪" readonly />
         </SectionCard>
 
         {/* 3. FARM DETAILS */}
@@ -418,15 +418,18 @@ export default function ProfileScreen() {
               <Text style={styles.inputLabel}>{t.landSize}</Text>
               <View style={styles.landRow}>
                 <TextInput style={[styles.input, { flex: 1, marginRight: 10, color: '#11181C' }]} placeholder="e.g. 2.5" keyboardType="numeric" value={tempProfile.landSize} onChangeText={v => setTempProfile(p => ({ ...p, landSize: v }))} />
-                <TouchableOpacity style={[styles.unitToggle, { backgroundColor: tempProfile.landUnit === 'acres' ? '#00C853' : '#eee' }]} onPress={() => setTempProfile(p => ({ ...p, landUnit: 'acres' }))}>
-                  <Text style={{ color: tempProfile.landUnit === 'acres' ? '#fff' : '#333' }}>Acres</Text>
+                <TouchableOpacity style={[styles.unitToggle, { backgroundColor: tempProfile.landUnit === 'acres' ? '#00C853' : '#eee', marginRight: 5 }]} onPress={() => setTempProfile(p => ({ ...p, landUnit: 'acres' }))}>
+                  <Text style={{ color: tempProfile.landUnit === 'acres' ? '#fff' : '#333' }}>{t.acresUnit}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.unitToggle, { backgroundColor: tempProfile.landUnit === 'hectares' ? '#00C853' : '#eee' }]} onPress={() => setTempProfile(p => ({ ...p, landUnit: 'hectares' }))}>
+                  <Text style={{ color: tempProfile.landUnit === 'hectares' ? '#fff' : '#333' }}>{t.hectaresUnit}</Text>
                 </TouchableOpacity>
               </View>
               <Text style={[styles.inputLabel, { marginTop: 14 }]}>{t.cropTypes}</Text>
               <View style={styles.chipRow}>
                 {CROP_OPTIONS.map(crop => (
                   <TouchableOpacity key={crop} style={[styles.chip, { backgroundColor: tempProfile.cropTypes.includes(crop) ? '#00C853' : '#eee' }]} onPress={() => toggleCrop(crop)}>
-                    <Text style={{ color: tempProfile.cropTypes.includes(crop) ? '#fff' : '#333' }}>{crop}</Text>
+                    <Text style={{ color: tempProfile.cropTypes.includes(crop) ? '#fff' : '#333' }}>{t.crops?.[crop] || crop}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -434,16 +437,16 @@ export default function ProfileScreen() {
               <View style={styles.stageRow}>
                 {CROP_STAGES.map(stage => (
                   <TouchableOpacity key={stage} style={[styles.stageBtn, { backgroundColor: tempProfile.cropStage === stage ? '#00B0FF' : '#eee', flex: 1 }]} onPress={() => setTempProfile(p => ({ ...p, cropStage: stage }))}>
-                    <Text style={{ color: tempProfile.cropStage === stage ? '#fff' : '#555', textAlign: 'center' }}>{stage}</Text>
+                    <Text style={{ color: tempProfile.cropStage === stage ? '#fff' : '#555', textAlign: 'center' }}>{t.stages?.[stage] || stage}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </>
           ) : (
             <>
-              <InfoRow label={t.landSize} value={profile.landSize ? `${profile.landSize} ${profile.landUnit}` : 'Not set'} icon="🗺️" />
-              <InfoRow label={t.cropTypes} value={profile.cropTypes.length > 0 ? profile.cropTypes.join(', ') : 'Not set'} icon="🌱" />
-              <InfoRow label={t.cropStage} value={profile.cropStage || 'Not set'} icon="📅" />
+              <InfoRow label={t.landSize} value={profile.landSize ? `${profile.landSize} ${profile.landUnit === 'acres' ? t.acresUnit : t.hectaresUnit}` : t.notSet} icon="🗺️" />
+              <InfoRow label={t.cropTypes} value={profile.cropTypes.length > 0 ? profile.cropTypes.map(c => t.crops?.[c] || c).join(', ') : t.notSet} icon="🌱" />
+              <InfoRow label={t.cropStage} value={profile.cropStage ? (t.stages?.[profile.cropStage] || profile.cropStage) : t.notSet} icon="📅" />
             </>
           )}
         </SectionCard>
@@ -451,34 +454,34 @@ export default function ProfileScreen() {
         {/* 4. GOVERNMENT SCHEMES */}
         <SectionCard title={`🏛️ ${t.schemes}`} color={c.surface}>
           <ToggleRow
-            label="Enable Scheme Notifications"
+            label={t.enableSchemeNotifs}
             value={displayProfile.interestedInSchemes}
             onToggle={toggleSchemes}
           />
 
           {displayProfile.interestedInSchemes && (
             <View style={styles.eligibilityCard}>
-              <Text style={styles.eligibilityTitle}>📋 Eligibility for Schemes</Text>
+              <Text style={styles.eligibilityTitle}>{t.eligibilitySchemes}</Text>
               <View style={styles.criteriaRow}>
                 <IconSymbol name="checkmark.circle.fill" size={16} color={profile.isVerified ? '#00C853' : '#ccc'} />
-                <Text style={[styles.criteriaText, !profile.isVerified && { color: '#999' }]}>Verified Farmer Profile</Text>
+                <Text style={[styles.criteriaText, !profile.isVerified && { color: '#999' }]}>{t.verifiedFarmerProfile}</Text>
               </View>
               <View style={styles.criteriaRow}>
                 <IconSymbol name="checkmark.circle.fill" size={16} color={profile.landSize ? '#00C853' : '#ccc'} />
-                <Text style={[styles.criteriaText, !profile.landSize && { color: '#999' }]}>Valid Land Records Added</Text>
+                <Text style={[styles.criteriaText, !profile.landSize && { color: '#999' }]}>{t.validLandRecords}</Text>
               </View>
               <View style={styles.criteriaRow}>
                 <IconSymbol name="checkmark.circle.fill" size={16} color={profile.village ? '#00C853' : '#ccc'} />
-                <Text style={[styles.criteriaText, !profile.village && { color: '#999' }]}>Local Village Verification</Text>
+                <Text style={[styles.criteriaText, !profile.village && { color: '#999' }]}>{t.localVillageVerification}</Text>
               </View>
               <View style={styles.criteriaRow}>
                 <IconSymbol name="checkmark.circle.fill" size={16} color="#00C853" />
-                <Text style={styles.criteriaText}>Aadhaar Linked Account</Text>
+                <Text style={styles.criteriaText}>{t.aadhaarLinkedAccount}</Text>
               </View>
 
               {!profile.isVerified && (
                 <View style={styles.warningBox}>
-                  <Text style={styles.warningText}>⚠️ Please complete your KYC to unlock all government benefits.</Text>
+                  <Text style={styles.warningText}>{t.kycWarning}</Text>
                 </View>
               )}
 
@@ -489,7 +492,7 @@ export default function ProfileScreen() {
                 <View style={[styles.schemeIconBox, { backgroundColor: '#E8F5E9' }]}>
                   <IconSymbol name="book.fill" size={20} color="#00C853" />
                 </View>
-                <Text style={[styles.browseSchemesText, { color: '#1B5E20' }]}>Browse & Apply for Schemes</Text>
+                <Text style={[styles.browseSchemesText, { color: '#1B5E20' }]}>{t.browseApplySchemes}</Text>
                 <IconSymbol name="chevron.right" size={20} color="#00C853" />
               </TouchableOpacity>
             </View>
@@ -509,17 +512,17 @@ export default function ProfileScreen() {
           <View style={styles.settingsRow}>
             <Text style={styles.settingsIcon}>👆</Text>
             <View style={{ flex: 1 }}>
-              <Text style={styles.settingsLabel}>Biometric Login</Text>
-              <Text style={styles.settingsValue}>Fingerprint / FaceID</Text>
+              <Text style={styles.settingsLabel}>{t.biometricLoginProfile || 'Biometric Login'}</Text>
+              <Text style={styles.settingsValue}>{t.fingerprintFaceId}</Text>
             </View>
             <Switch value={isBioEnabled} onValueChange={setBiometricEnabled} trackColor={{ false: '#ddd', true: '#00C853' }} />
           </View>
           <View style={styles.settingsRow}>
             <Text style={styles.settingsIcon}>🔔</Text>
             <View style={{ flex: 1 }}>
-              <Text style={styles.settingsLabel}>Daily App Reminder</Text>
+              <Text style={styles.settingsLabel}>{t.dailyAppReminder}</Text>
               <Text style={styles.settingsValue}>
-                Morning Farm Update ({(() => {
+                {t.morningFarmUpdate} ({(() => {
                   const h = displayProfile.reminderHour || 8;
                   const m = displayProfile.reminderMinute || 0;
                   const ampm = h >= 12 ? 'PM' : 'AM';
@@ -537,7 +540,7 @@ export default function ProfileScreen() {
           {displayProfile.dailyReminder && (
             <View style={styles.timePickerRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.timeLabel}>Reminder Time</Text>
+                <Text style={styles.timeLabel}>{t.reminderTime}</Text>
                 <Text style={styles.timeValue}>
                   {(() => {
                     const h = displayProfile.reminderHour || 8;
@@ -553,7 +556,7 @@ export default function ProfileScreen() {
                 onPress={() => setShowTimePicker(true)}
               >
                 <Text style={{ fontSize: 24 }}>⏰</Text>
-                <Text style={styles.clockBtnText}>Change Time</Text>
+                <Text style={styles.clockBtnText}>{t.changeTime}</Text>
               </TouchableOpacity>
 
               {showTimePicker && (
@@ -584,7 +587,7 @@ export default function ProfileScreen() {
       <Modal visible={showLangModal} transparent animationType="slide">
         <Pressable style={styles.modalOverlay} onPress={() => setShowLangModal(false)}>
           <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>🌐 Select Language</Text>
+            <Text style={styles.modalTitle}>{t.selectLanguageModal}</Text>
             {LANGUAGES.map(l => (
               <TouchableOpacity key={l} style={[styles.langOption, { backgroundColor: language === l ? '#e8f5e9' : '#f9f9f9' }]} onPress={() => changeLanguage(l)}>
                 <Text style={[styles.langText, { color: language === l ? '#00C853' : '#333' }]}>{l}</Text>

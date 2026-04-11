@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { addDoc, collection, onSnapshot } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { Alert, Dimensions, FlatList, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Video, ResizeMode } from 'expo-av';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -34,7 +35,7 @@ export default function MachineryMarket() {
   const [duration, setDuration] = useState('4');
   const [bookingLoading, setBookingLoading] = useState(false);
 
-  const categories = ['All', 'Tractors', 'Harvesters', 'Drones', 'Tools', 'Irrigation'];
+  const categories = ['All', 'Tractors', 'Harvesters', 'Drones', 'Tillers', 'Planters', 'Sprayers', 'Tools', 'Irrigation'];
 
   useEffect(() => {
     (async () => {
@@ -108,9 +109,25 @@ export default function MachineryMarket() {
     return matchedCategory && matchedSearch;
   });
 
+  function formatDisplayDate(dateStr?: string) {
+    if (!dateStr) return 'Not Set';
+    try {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      if (!y || !m || !d) return dateStr;
+      const date = new Date(y, m - 1, d);
+      return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  }
+
   const getIcon = (t: string) => {
     if (t === 'Drones') return 'airplane';
     if (t === 'Tractors') return 'gearshape.fill';
+    if (t === 'Harvesters') return 'car.fill'; // closest sf symbol for heavy vehicle
+    if (t === 'Sprayers') return 'drop.fill';
+    if (t === 'Planters') return 'leaf.fill';
+    if (t === 'Irrigation') return 'cloud.rain.fill';
     return 'wrench.and.screwdriver.fill';
   };
 
@@ -119,7 +136,7 @@ export default function MachineryMarket() {
       <LinearGradient colors={['#00C853', '#1B5E20']} style={styles.header}>
         <View style={styles.topNav}>
           <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}><IconSymbol name="chevron.left" size={24} color="#fff" /></TouchableOpacity>
-          <Text style={styles.headerTitle}>Machinery Marketplace</Text>
+          <Text style={styles.headerTitle}>{t.machineryMarketplace}</Text>
           <View style={{ width: 40 }} />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categories}>
@@ -133,7 +150,7 @@ export default function MachineryMarket() {
 
       <View style={styles.searchBox}>
         <IconSymbol name="magnifyingglass" size={20} color="#888" />
-        <TextInput placeholder="Search for gear..." style={styles.searchInput} value={searchQuery} onChangeText={setSearchQuery} />
+        <TextInput placeholder={t.searchMachineryPlaceholder} style={styles.searchInput} value={searchQuery} onChangeText={setSearchQuery} />
       </View>
 
       <FlatList
@@ -143,13 +160,17 @@ export default function MachineryMarket() {
             <Image source={{ uri: item.image || 'https://via.placeholder.com/300' }} style={styles.cardImg} />
             <View style={styles.cardInfo}>
               <View style={styles.badge}><IconSymbol name={getIcon(item.type)} size={12} color="#00C853" /><Text style={styles.badgeText}>{item.type}</Text></View>
-              <Text style={styles.cardName}>{item.name}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.cardName}>{item.name}</Text>
+                {item.video && <IconSymbol name="video.fill" size={14} color="#00C853" />}
+              </View>
               <Text style={styles.cardOwner}>by {item.ownerName}</Text>
+              <Text style={[styles.cardOwner, { color: '#FF9800', fontWeight: 'bold' }]}>⏰ {item.shiftStart || '06:00 AM'} - {item.shiftEnd || '06:00 PM'}</Text>
               <View style={styles.cardFooter}>
                 <Text style={styles.cardPrice}>₹{item.price}/h</Text>
                 <View style={{ gap: 5, alignItems: 'flex-end' }}>
                   <View style={styles.callBadge}><Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>View Details</Text></View>
-                  <View style={[styles.callBadge, { backgroundColor: '#FFA000' }]}><Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>Book Now</Text></View>
+                  <View style={[styles.callBadge, { backgroundColor: '#FFA000' }]}><Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>{t.bookNowBtn}</Text></View>
                 </View>
               </View>
             </View>
@@ -157,7 +178,7 @@ export default function MachineryMarket() {
         )}
         keyExtractor={m => m.id}
         contentContainerStyle={{ padding: 20 }}
-        ListEmptyComponent={<Text style={styles.empty}>No machinery found in this category.</Text>}
+        ListEmptyComponent={<Text style={styles.empty}>{t.noMachineryFound}</Text>}
       />
 
       <Modal visible={bookingModalVisible} animationType="slide" transparent>
@@ -176,7 +197,33 @@ export default function MachineryMarket() {
                   showsVerticalScrollIndicator={false}
                   contentContainerStyle={{ paddingBottom: 40 }}
                 >
-                  <Image source={{ uri: selectedMachine.image }} style={styles.detailHero} />
+                  <View style={{ gap: 20, marginBottom: 20 }}>
+                    <View style={{ width: '100%', height: 220, borderRadius: 25, overflow: 'hidden' }}>
+                      <Image 
+                        source={{ uri: selectedMachine.image || 'https://via.placeholder.com/300' }} 
+                        style={{ width: '100%', height: '100%' }} 
+                      />
+                      <View style={{ position: 'absolute', top: 10, left: 10, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>IMAGE</Text>
+                      </View>
+                    </View>
+                    
+                    {selectedMachine.video && (
+                      <View style={{ width: '100%', height: 220, borderRadius: 25, overflow: 'hidden' }}>
+                        <Video
+                          source={{ uri: selectedMachine.video }}
+                          style={{ width: '100%', height: '100%' }}
+                          useNativeControls
+                          resizeMode={ResizeMode.COVER}
+                          isLooping
+                        />
+                        <View style={{ position: 'absolute', top: 10, left: 10, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <IconSymbol name="video.fill" size={12} color="#fff" />
+                          <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>VIDEO</Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
                   <View style={styles.detailMain}>
                     <View style={styles.badge}><Text style={styles.badgeText}>{selectedMachine.type}</Text></View>
                     <Text style={styles.detailName}>{selectedMachine.name}</Text>
@@ -184,7 +231,7 @@ export default function MachineryMarket() {
 
                     {selectedMachine.description && (
                       <View style={{ marginTop: 15, backgroundColor: '#f5f5f5', padding: 15, borderRadius: 12 }}>
-                        <Text style={{ fontSize: 13, color: '#666', marginBottom: 5, fontWeight: 'bold' }}>FULL DETAILS</Text>
+                        <Text style={{ fontSize: 13, color: '#666', marginBottom: 5, fontWeight: 'bold' }}>{t.fullDetailsDesc.toUpperCase()}</Text>
                         <Text style={{ fontSize: 15, color: '#444', lineHeight: 22 }}>{selectedMachine.description}</Text>
                       </View>
                     )}
@@ -194,7 +241,7 @@ export default function MachineryMarket() {
                     <View style={styles.infoRow}>
                       <View style={styles.infoIcon}><IconSymbol name="person.fill" size={20} color="#00C853" /></View>
                       <View>
-                        <Text style={styles.infoLabel}>Owner Name</Text>
+                        <Text style={styles.infoLabel}>{t.ownerName}</Text>
                         <Text style={styles.infoVal}>{selectedMachine.ownerName}</Text>
                       </View>
                     </View>
@@ -202,7 +249,7 @@ export default function MachineryMarket() {
                     <View style={styles.infoRow}>
                       <View style={styles.infoIcon}><IconSymbol name="location.fill" size={20} color="#00C853" /></View>
                       <View>
-                        <Text style={styles.infoLabel}>Location</Text>
+                        <Text style={styles.infoLabel}>{t.location}</Text>
                         <Text style={styles.infoVal}>{calculateDistance(selectedMachine.location)} km away</Text>
                       </View>
                     </View>
@@ -215,13 +262,29 @@ export default function MachineryMarket() {
                       </View>
                     </View>
 
+                    <View style={styles.infoRow}>
+                      <View style={styles.infoIcon}><IconSymbol name="calendar" size={20} color="#00C853" /></View>
+                      <View>
+                        <Text style={styles.infoLabel}>{t.availableDates}</Text>
+                        <Text style={styles.infoVal}>{formatDisplayDate(selectedMachine.availableDateStart)} to {formatDisplayDate(selectedMachine.availableDateEnd)}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.infoRow}>
+                      <View style={styles.infoIcon}><IconSymbol name="clock.fill" size={20} color="#00C853" /></View>
+                      <View>
+                        <Text style={styles.infoLabel}>{t.operatingShift}</Text>
+                        <Text style={styles.infoVal}>{selectedMachine.shiftStart || '06:00 AM'} to {selectedMachine.shiftEnd || '06:00 PM'}</Text>
+                      </View>
+                    </View>
+
                     <View style={styles.detailSeparator} />
 
-                    <Text style={[styles.infoLabel, { marginBottom: 15, color: '#1B5E20', fontWeight: 'bold' }]}>SCHEDULE BOOKING</Text>
+                    <Text style={[styles.infoLabel, { marginBottom: 15, color: '#1B5E20', fontWeight: 'bold' }]}>{t.scheduleBooking}</Text>
 
                     <View style={{ gap: 15 }}>
                       <View>
-                        <Text style={styles.label}>Rental Date</Text>
+                        <Text style={styles.label}>{t.requestedDate}</Text>
                         <TextInput
                           style={styles.input}
                           value={bookingDate}
@@ -230,7 +293,7 @@ export default function MachineryMarket() {
                         />
                       </View>
                       <View>
-                        <Text style={styles.label}>Duration (Hours)</Text>
+                        <Text style={styles.label}>{t.durationHours}</Text>
                         <TextInput
                           style={styles.input}
                           value={duration}
@@ -242,7 +305,7 @@ export default function MachineryMarket() {
 
                       <View style={styles.costBox}>
                         <View style={styles.costRow}>
-                          <Text style={{ color: '#666' }}>Total Amount</Text>
+                          <Text style={{ color: '#666' }}>{t.grandTotalLabel}</Text>
                           <Text style={styles.costVal}>₹{parseInt(selectedMachine.price) * (parseInt(duration) || 0)}</Text>
                         </View>
                       </View>
@@ -257,7 +320,7 @@ export default function MachineryMarket() {
                     disabled={bookingLoading}
                   >
                     <IconSymbol name="plus" size={20} color="#fff" />
-                    <Text style={styles.mainBtnText}>{bookingLoading ? 'Processing...' : 'Confirm Book Now'}</Text>
+                    <Text style={styles.mainBtnText}>{bookingLoading ? 'Processing...' : t.bookNowBtn}</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity

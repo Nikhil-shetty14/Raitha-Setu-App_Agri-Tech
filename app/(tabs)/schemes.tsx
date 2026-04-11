@@ -99,7 +99,7 @@ export default function SchemesScreen() {
     <View style={[styles.container, { backgroundColor: c.background }]}>
       <View style={[styles.header, { backgroundColor: c.primary }]}>
         <Text style={[styles.title, { color: '#FAFAFA' }]}>{t.schemes}</Text>
-        <Text style={[styles.subtitle, { color: '#FAFAFA' }]}>AI Explained & Eligibility Checked</Text>
+        <Text style={[styles.subtitle, { color: '#FAFAFA' }]}>{t.aiSubHeader}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>

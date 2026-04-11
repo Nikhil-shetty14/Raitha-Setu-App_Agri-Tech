@@ -99,9 +99,9 @@ export default function HomeScreen() {
   ];
 
   const BANNERS = [
-    { id: '1', title: 'Organic Boost', sub: 'Eco-friendly fertilizer for your fields', img: require('@/assets/images/ad_fertilizer.jpg') },
-    { id: '2', title: 'New Mahindra Series', sub: 'Upgrade your tractor with 0% EMI', img: require('@/assets/images/ad_tractor.jpg') },
-    { id: '3', title: 'Karnataka Subsidies', sub: 'Register for seed distribution now', img: require('@/assets/images/ad_subsidy.jpg') },
+    { id: '1', title: 'Organic Boost', sub: 'Eco-friendly fertilizer for your fields', img: require('@/assets/images/ad_fertilizer.png') },
+    { id: '2', title: 'New Mahindra Series', sub: 'Upgrade your tractor with 0% EMI', img: require('@/assets/images/ad_tractor.png') },
+    { id: '3', title: 'Karnataka Subsidies', sub: 'Register for seed distribution now', img: require('@/assets/images/ad_subsidy.png') },
   ];
 
   const loadWeather = async () => {
@@ -392,7 +392,7 @@ export default function HomeScreen() {
                   resizeMode="contain"
                 />
               </View>
-              <Text style={styles.brandText}>RAITHA SETU</Text>
+              <Text style={styles.brandText}>{t.appName.toUpperCase()}</Text>
             </View>
             <Text style={styles.greetNamaste}>🙏 {t.namaste}</Text>
             <Text style={styles.greetTag}>
@@ -452,8 +452,8 @@ export default function HomeScreen() {
                   <Text style={{ fontSize: 28 }}>🤖</Text>
                 </View>
                 <View style={{ marginLeft: 14 }}>
-                  <Text style={styles.aiCardTitle}>AI Farm Manager</Text>
-                  <Text style={styles.aiCardSub}>Crops · Pests · Market · Weather</Text>
+                  <Text style={styles.aiCardTitle}>{t.aiManager}</Text>
+                  <Text style={styles.aiCardSub}>{t.aiFeatures}</Text>
                 </View>
               </View>
               <View style={styles.aiMicBtn}>
@@ -649,15 +649,15 @@ export default function HomeScreen() {
         <View style={styles.mandiDirectory}>
           <View style={styles.mandiHeader}>
             <View>
-              <Text style={styles.mandiTitle}>📞 APMC Contact List</Text>
-              <Text style={styles.mandiSub}>Search and contact local market support</Text>
+              <Text style={styles.mandiTitle}>{t.apmcContactList}</Text>
+              <Text style={styles.mandiSub}>{t.apmcSub}</Text>
             </View>
             <IconSymbol name="phone.circle.fill" size={32} color="#1B5E20" />
           </View>
 
           <View style={styles.mandiSearchRow}>
             <TextInput
-              placeholder="Search Mandi Name..."
+              placeholder={t.apmcSearch}
               style={styles.mandiInput}
               value={mandiSearch}
               onChangeText={setMandiSearch}
@@ -682,7 +682,7 @@ export default function HomeScreen() {
                   activeOpacity={0.8}
                 >
                   <IconSymbol name="phone.fill" size={14} color="#fff" />
-                  <Text style={styles.callMandiText}>Call</Text>
+                  <Text style={styles.callMandiText}>{t.callBtn}</Text>
                 </TouchableOpacity>
               </View>
             ))}

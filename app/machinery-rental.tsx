@@ -8,9 +8,11 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, FlatList, Image, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Video, ResizeMode } from 'expo-av';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -34,15 +36,69 @@ export default function MachineryRentalHub() {
   const [bookingModalVisible, setBookingModalVisible] = useState(false);
 
   // New Listing State
-  const [newMachine, setNewMachine] = useState({ name: '', price: '', type: 'Tractor', description: '', phone: profile?.phone || '', ownerName: user?.displayName || '', image: null as string | null });
+  const [newMachine, setNewMachine] = useState({ 
+    name: '', 
+    price: '', 
+    type: 'Tractor', 
+    description: '', 
+    phone: profile?.phone || '', 
+    ownerName: user?.displayName || '', 
+    image: null as string | null,
+    video: null as string | null,
+    shiftStart: '06:00 AM',
+    shiftEnd: '06:00 PM',
+    availableDateStart: new Date().toISOString().split('T')[0],
+    availableDateEnd: new Date(Date.now() + 86400000 * 30).toISOString().split('T')[0]
+  });
   const [uploading, setUploading] = useState(false);
+  const [showShiftStartPicker, setShowShiftStartPicker] = useState(false);
+  const [showShiftEndPicker, setShowShiftEndPicker] = useState(false);
+  const [showDateStartPicker, setShowDateStartPicker] = useState(false);
+  const [showDateEndPicker, setShowDateEndPicker] = useState(false);
 
   // Booking State
   const [bookingDate, setBookingDate] = useState(new Date().toISOString().split('T')[0]);
   const [duration, setDuration] = useState('4');
+  const [bookingShiftStart, setBookingShiftStart] = useState('09:00 AM');
+  const [bookingShiftEnd, setBookingShiftEnd] = useState('01:00 PM');
+  const [showBookingShiftStartPicker, setShowBookingShiftStartPicker] = useState(false);
+  const [showBookingShiftEndPicker, setShowBookingShiftEndPicker] = useState(false);
   const [bookingLoading, setBookingLoading] = useState(false);
 
-  const categories = ['All', 'Tractors', 'Harvesters', 'Drones', 'Tools', 'Irrigation'];
+  function parseTimeString(timeStr: string) {
+    if (!timeStr) return new Date(new Date().setHours(9, 0, 0, 0));
+    try {
+      const [time, period] = timeStr.trim().split(' ');
+      if (!time || !period) return new Date(new Date().setHours(9, 0, 0, 0));
+      const [h, m] = time.split(':').map(Number);
+      const date = new Date();
+      let hours = h;
+      if (period === 'PM' && hours < 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+      date.setHours(hours, m || 0, 0, 0);
+      return date;
+    } catch {
+      return new Date(new Date().setHours(9, 0, 0, 0));
+    }
+  }
+
+  function formatTimeString(date: Date) {
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  }
+
+  function formatDisplayDate(dateStr?: string) {
+    if (!dateStr) return 'Not Set';
+    try {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      if (!y || !m || !d) return dateStr;
+      const date = new Date(y, m - 1, d);
+      return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  }
+
+  const categories = ['All', 'Tractors', 'Harvesters', 'Drones', 'Tillers', 'Planters', 'Sprayers', 'Tools', 'Irrigation'];
 
   useEffect(() => {
     (async () => {
@@ -115,11 +171,32 @@ export default function MachineryRentalHub() {
     }
   };
 
+  const handlePickVideo = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['videos'],
+      allowsEditing: true,
+      videoMaxDuration: 10,
+      quality: 0.1,
+      base64: true
+    });
+    if (!result.canceled) {
+      if (result.assets[0].duration && result.assets[0].duration > 10500) { // slight buffer
+         Alert.alert("Video Too Long", "Please select a video under 10 seconds.");
+         return;
+      }
+      setNewMachine(prev => ({
+        ...prev,
+        video: result.assets[0].uri
+      }));
+    }
+  };
+
+  // uploadMediaToStorage is completely removed.
+
   const handlePostListing = async () => {
     if (!newMachine.name || !newMachine.price || !user) return;
     setUploading(true);
     try {
-      // Bulletproof: Save directly to Firestore (Bypass broken Storage SDK)
       await addDoc(collection(db, 'machinery'), {
         ownerId: user.uid,
         name: newMachine.name,
@@ -128,17 +205,25 @@ export default function MachineryRentalHub() {
         phone: newMachine.phone,
         ownerName: newMachine.ownerName,
         description: newMachine.description,
-        image: newMachine.image, // Base64 Data URL
+        image: newMachine.image, 
+        video: newMachine.video, 
+        shiftStart: newMachine.shiftStart,
+        shiftEnd: newMachine.shiftEnd,
+        availableDateStart: newMachine.availableDateStart,
+        availableDateEnd: newMachine.availableDateEnd,
         location: { lat: userLocation?.latitude || 12.97, lng: userLocation?.longitude || 77.59 },
         rating: 4.8,
         createdAt: new Date().toISOString()
       });
       setViewMode('hub');
-      setNewMachine({ name: '', price: '', type: 'Tractor', description: '', phone: profile?.phone || '', ownerName: user?.displayName || '', image: null });
+      setNewMachine({ name: '', price: '', type: 'Tractor', description: '', phone: profile?.phone || '', ownerName: user?.displayName || '', image: null, video: null, shiftStart: '06:00 AM', shiftEnd: '06:00 PM', availableDateStart: new Date().toISOString().split('T')[0], availableDateEnd: new Date(Date.now() + 86400000 * 30).toISOString().split('T')[0] });
       Alert.alert("Success", "Machine is now available for rent!");
     } catch (e: any) {
-      console.error("Post Error:", e.message);
-      Alert.alert("Upload Error", "Could not save listing. Database connection error.");
+      console.error("Post Error Details:", e.message);
+      Alert.alert(
+        "Upload Error", 
+        `Could not save listing: ${e.message}`
+      );
     }
     finally { setUploading(false); }
   };
@@ -168,7 +253,9 @@ export default function MachineryRentalHub() {
         machineId: selectedMachine.id, machineName: selectedMachine.name,
         ownerId: selectedMachine.ownerId, farmerId: user.uid,
         farmerName: user.displayName || 'Farmer',
-        date: bookingDate, duration, totalPrice: total, status: 'Pending',
+        date: bookingDate, duration,
+        shiftStart: bookingShiftStart, shiftEnd: bookingShiftEnd,
+        totalPrice: total, status: 'Pending',
         createdAt: new Date().toISOString()
       });
       await addDoc(collection(db, 'notifications'), {
@@ -241,7 +328,10 @@ export default function MachineryRentalHub() {
         <View style={{ flexDirection: 'row', gap: 15, marginBottom: 15 }}>
           <Image source={{ uri: item.image || 'https://via.placeholder.com/300' }} style={styles.machineThumbnail} />
           <View style={{ flex: 1, justifyContent: 'center' }}>
-            <Text style={styles.premiumName}>{item.name}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={styles.premiumName}>{item.name}</Text>
+              {item.video && <IconSymbol name="video.fill" size={16} color="#00C853" />}
+            </View>
             <Text style={styles.machineTypeBadge}>{item.type}</Text>
           </View>
         </View>
@@ -392,15 +482,15 @@ export default function MachineryRentalHub() {
             contentContainerStyle={styles.listContainer}
             ListEmptyComponent={
               <View style={styles.emptyContainerContent}>
-                <Text style={styles.emptyTitleText}>No machinery found</Text>
-                <Text style={styles.emptySubText}>Try a different category or search term.</Text>
+                <Text style={styles.emptyTitleText}>{t.noMachineryFound}</Text>
+                <Text style={styles.emptySubText}>{t.tryDifferentCategory}</Text>
               </View>
             }
           />
         </View>
       ) : viewMode === 'action' ? (
         <ScrollView contentContainerStyle={styles.formContent}>
-          <Text style={styles.formLabel}>Category</Text>
+          <Text style={styles.formLabel}>{t.machineCategory}</Text>
           <View style={styles.categoryGrid}>
             {categories.filter(c => c !== 'All').map(cat => (
               <TouchableOpacity
@@ -413,67 +503,157 @@ export default function MachineryRentalHub() {
             ))}
           </View>
 
-          <Text style={styles.formLabel}>Machine Image</Text>
+          <Text style={styles.formLabel}>{t.machineImage}</Text>
           <TouchableOpacity onPress={handlePickImage} style={styles.imageSelector}>
             {newMachine.image ? (
               <Image source={{ uri: newMachine.image }} style={styles.imagePreview} />
             ) : (
               <View style={{ alignItems: 'center' }}>
                 <IconSymbol name="camera.fill" size={40} color="#ccc" />
-                <Text style={{ color: '#999', marginTop: 10 }}>Tap to upload</Text>
+                <Text style={{ color: '#999', marginTop: 10 }}>{t.tapToUploadImage}</Text>
               </View>
             )}
           </TouchableOpacity>
 
-          <Text style={styles.formLabel}>Machine Name</Text>
+          <Text style={styles.formLabel}>{t.promoVideo}</Text>
+          <TouchableOpacity onPress={handlePickVideo} style={styles.imageSelector}>
+            {newMachine.video ? (
+              <View style={{ width: '100%', height: '100%', borderRadius: 18, overflow: 'hidden' }}>
+                <Video
+                  source={{ uri: newMachine.video }}
+                  style={{ width: '100%', height: '100%' }}
+                  useNativeControls
+                  resizeMode={ResizeMode.COVER}
+                  isLooping
+                />
+              </View>
+            ) : (
+              <View style={{ alignItems: 'center' }}>
+                <IconSymbol name="video.fill" size={40} color="#ccc" />
+                <Text style={{ color: '#999', marginTop: 10 }}>{t.tapToUploadVideo}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <Text style={styles.formLabel}>{t.machineName}</Text>
           <TextInput
-            placeholder="e.g. John Deere Tractor"
+            placeholder={t.machineName}
             style={styles.formInput}
             value={newMachine.name}
             onChangeText={t => setNewMachine(p => ({ ...p, name: t }))}
           />
 
-          <Text style={styles.formLabel}>Hourly Rate (₹)</Text>
+          <Text style={styles.formLabel}>{t.hourlyRate}</Text>
           <TextInput
-            placeholder="Rate per hour"
+            placeholder={t.hourlyRate}
             style={styles.formInput}
             keyboardType="numeric"
             value={newMachine.price}
             onChangeText={t => setNewMachine(p => ({ ...p, price: t }))}
           />
 
-          <Text style={styles.formLabel}>Full Details / Description</Text>
+          <Text style={styles.formLabel}>{t.fullDetailsDesc}</Text>
           <TextInput
-            placeholder="e.g. Model year, hours used, fuel type..."
+            placeholder={t.fullDetailsDesc}
             style={[styles.formInput, { height: 100, textAlignVertical: 'top' }]}
             multiline
             value={newMachine.description}
             onChangeText={t => setNewMachine(p => ({ ...p, description: t }))}
           />
 
-          <Text style={styles.formLabel}>Owner Name</Text>
+          <Text style={styles.formLabel}>{t.ownerName}</Text>
           <TextInput
-            placeholder="Your name"
+            placeholder={t.ownerName}
             style={styles.formInput}
             value={newMachine.ownerName}
             onChangeText={t => setNewMachine(p => ({ ...p, ownerName: t }))}
           />
 
-          <Text style={styles.formLabel}>Owner Contact (Mobile)</Text>
+          <Text style={styles.formLabel}>{t.ownerContactInfo}</Text>
           <TextInput
-            placeholder="Your phone number"
+            placeholder={t.ownerContactInfo}
             style={styles.formInput}
             keyboardType="phone-pad"
             value={newMachine.phone}
             onChangeText={t => setNewMachine(p => ({ ...p, phone: t }))}
           />
 
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 15 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.formLabel}>{t.availableFromDate}</Text>
+              <TouchableOpacity style={[styles.formInput, { justifyContent: 'center' }]} onPress={() => setShowDateStartPicker(true)}>
+                <Text style={{ color: '#444' }}>{formatDisplayDate(newMachine.availableDateStart)}</Text>
+              </TouchableOpacity>
+              {showDateStartPicker && (
+                <DateTimePicker
+                  value={new Date(newMachine.availableDateStart || Date.now())}
+                  mode="date"
+                  onChange={(e, d) => {
+                    setShowDateStartPicker(false);
+                    if (d) setNewMachine(p => ({ ...p, availableDateStart: d.toISOString().split('T')[0] }));
+                  }}
+                />
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.formLabel}>{t.availableUntilDate}</Text>
+              <TouchableOpacity style={[styles.formInput, { justifyContent: 'center' }]} onPress={() => setShowDateEndPicker(true)}>
+                <Text style={{ color: '#444' }}>{formatDisplayDate(newMachine.availableDateEnd)}</Text>
+              </TouchableOpacity>
+              {showDateEndPicker && (
+                <DateTimePicker
+                  value={new Date(newMachine.availableDateEnd || Date.now())}
+                  mode="date"
+                  onChange={(e, d) => {
+                    setShowDateEndPicker(false);
+                    if (d) setNewMachine(p => ({ ...p, availableDateEnd: d.toISOString().split('T')[0] }));
+                  }}
+                />
+              )}
+            </View>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 15, marginBottom: 20 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.formLabel}>{t.availableFromTime}</Text>
+              <TouchableOpacity style={[styles.formInput, { justifyContent: 'center' }]} onPress={() => setShowShiftStartPicker(true)}>
+                <Text style={{ color: '#444' }}>{newMachine.shiftStart}</Text>
+              </TouchableOpacity>
+              {showShiftStartPicker && (
+                <DateTimePicker
+                  value={parseTimeString(newMachine.shiftStart)}
+                  mode="time"
+                  onChange={(e, d) => {
+                    setShowShiftStartPicker(false);
+                    if (d) setNewMachine(p => ({ ...p, shiftStart: formatTimeString(d) }));
+                  }}
+                />
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.formLabel}>{t.availableUntilTime}</Text>
+              <TouchableOpacity style={[styles.formInput, { justifyContent: 'center' }]} onPress={() => setShowShiftEndPicker(true)}>
+                <Text style={{ color: '#444' }}>{newMachine.shiftEnd}</Text>
+              </TouchableOpacity>
+              {showShiftEndPicker && (
+                <DateTimePicker
+                  value={parseTimeString(newMachine.shiftEnd)}
+                  mode="time"
+                  onChange={(e, d) => {
+                    setShowShiftEndPicker(false);
+                    if (d) setNewMachine(p => ({ ...p, shiftEnd: formatTimeString(d) }));
+                  }}
+                />
+              )}
+            </View>
+          </View>
+
           <TouchableOpacity
             style={[styles.submitBtn, { backgroundColor: c.primary }]}
             onPress={handlePostListing}
             disabled={uploading}
           >
-            {uploading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>List Machinery</Text>}
+            {uploading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>{t.listMachineryBtn}</Text>}
           </TouchableOpacity>
         </ScrollView>
       ) : (
@@ -484,8 +664,8 @@ export default function MachineryRentalHub() {
           contentContainerStyle={styles.listContainer}
           ListEmptyComponent={
             <View style={styles.emptyContainerContent}>
-              <Text style={styles.emptyTitleText}>No orders yet</Text>
-              <Text style={styles.emptySubText}>Machine requests will appear here.</Text>
+              <Text style={styles.emptyTitleText}>{t.noOrdersYet}</Text>
+              <Text style={styles.emptySubText}>{t.machineRequestsWillAppear}</Text>
             </View>
           }
         />
@@ -496,7 +676,7 @@ export default function MachineryRentalHub() {
         <Pressable style={styles.modalOverlay} onPress={() => setBookingModalVisible(false)}>
           <BlurView intensity={100} tint="light" style={styles.modalSheet}>
             <View style={styles.modalTitleRow}>
-              <Text style={styles.modalTitle}>Confirm Booking</Text>
+              <Text style={styles.modalTitle}>{t.confirmBookingTitle}</Text>
               <TouchableOpacity onPress={() => setBookingModalVisible(false)}><IconSymbol name="xmark.circle.fill" size={28} color="#999" /></TouchableOpacity>
             </View>
             {selectedMachine && (
@@ -508,18 +688,53 @@ export default function MachineryRentalHub() {
                     <Text style={styles.briefMeta}>₹{selectedMachine.price} / hour</Text>
                   </View>
                 </View>
-                <Text style={styles.label}>Requested Date</Text>
+                <Text style={styles.label}>{t.requestedDate}</Text>
                 <TextInput style={styles.input} value={bookingDate} onChangeText={setBookingDate} placeholder="YYYY-MM-DD" />
-                <Text style={styles.label}>Duration (Hours)</Text>
+                <Text style={styles.label}>{t.durationHours}</Text>
                 <TextInput style={styles.input} keyboardType="numeric" value={duration} onChangeText={setDuration} />
 
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 10, marginBottom: 20 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.label}>{t.bookingTime}</Text>
+                    <TouchableOpacity style={[styles.input, { justifyContent: 'center' }]} onPress={() => setShowBookingShiftStartPicker(true)}>
+                      <Text style={{ color: '#444' }}>{bookingShiftStart}</Text>
+                    </TouchableOpacity>
+                    {showBookingShiftStartPicker && (
+                      <DateTimePicker
+                        value={parseTimeString(bookingShiftStart)}
+                        mode="time"
+                        onChange={(e, d) => {
+                          setShowBookingShiftStartPicker(false);
+                          if (d) setBookingShiftStart(formatTimeString(d));
+                        }}
+                      />
+                    )}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.label}>{t.bookingUntil}</Text>
+                    <TouchableOpacity style={[styles.input, { justifyContent: 'center' }]} onPress={() => setShowBookingShiftEndPicker(true)}>
+                      <Text style={{ color: '#444' }}>{bookingShiftEnd}</Text>
+                    </TouchableOpacity>
+                    {showBookingShiftEndPicker && (
+                      <DateTimePicker
+                        value={parseTimeString(bookingShiftEnd)}
+                        mode="time"
+                        onChange={(e, d) => {
+                          setShowBookingShiftEndPicker(false);
+                          if (d) setBookingShiftEnd(formatTimeString(d));
+                        }}
+                      />
+                    )}
+                  </View>
+                </View>
+
                 <View style={styles.costBox}>
-                  <View style={styles.costRow}><Text style={styles.costLab}>Machine Rate</Text><Text style={styles.costVal}>₹{selectedMachine.price}/h</Text></View>
-                  <View style={styles.costRow}><Text style={[styles.costLab, { fontWeight: 'bold' }]}>Grand Total</Text><Text style={[styles.costVal, { color: '#00C853', fontSize: 18 }]}>₹{parseInt(selectedMachine.price || '0') * parseInt(duration || '0')}</Text></View>
+                  <View style={styles.costRow}><Text style={styles.costLab}>{t.machineRateLabel}</Text><Text style={styles.costVal}>₹{selectedMachine.price}/h</Text></View>
+                  <View style={styles.costRow}><Text style={[styles.costLab, { fontWeight: 'bold' }]}>{t.grandTotalLabel}</Text><Text style={[styles.costVal, { color: '#00C853', fontSize: 18 }]}>₹{parseInt(selectedMachine.price || '0') * parseInt(duration || '0')}</Text></View>
                 </View>
 
                 <TouchableOpacity style={styles.mainBtn} onPress={handleConfirmBooking} disabled={bookingLoading}>
-                  {bookingLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.mainBtnText}>Book Now</Text>}
+                  {bookingLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.mainBtnText}>{t.bookNowBtn}</Text>}
                 </TouchableOpacity>
               </ScrollView>
             )}

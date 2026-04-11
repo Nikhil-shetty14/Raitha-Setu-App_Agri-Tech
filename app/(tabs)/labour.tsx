@@ -56,6 +56,8 @@ interface Job {
   status: JobStatus;
   applicantIds: string[];
   createdAt: any;
+  shiftStart?: string;
+  shiftEnd?: string;
 }
 
 interface LabourProfile {
@@ -69,6 +71,8 @@ interface LabourProfile {
   availableUntil?: string;
   gender?: 'Male' | 'Female' | 'Prefer not to say';
   updatedAt: any;
+  shiftStart?: string;
+  shiftEnd?: string;
 }
 
 const AVAILABLE_SKILLS = ['Harvesting', 'Sowing', 'Weeding', 'Tilling', 'Pesticides', 'Pruning'];
@@ -88,6 +92,26 @@ function formatDisplayDate(dateStr: string | undefined) {
   } catch {
     return dateStr;
   }
+}
+
+function parseTimeString(timeStr: string) {
+  if (!timeStr) return new Date(new Date().setHours(9, 0, 0, 0));
+  try {
+    const [time, period] = timeStr.split(' ');
+    const [h, m] = time.split(':').map(Number);
+    const date = new Date();
+    let hours = h;
+    if (period === 'PM' && hours < 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    date.setHours(hours, m || 0, 0, 0);
+    return date;
+  } catch {
+    return new Date(new Date().setHours(9, 0, 0, 0));
+  }
+}
+
+function formatTimeString(date: Date) {
+  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
 function DetailRow({ label, value, icon }: { label: string, value: string, icon: string }) {
@@ -136,6 +160,10 @@ export default function LabourHub() {
   const [labourLocation, setLabourLocation] = useState('');
   const [labourFromDate, setLabourFromDate] = useState('');
   const [labourUntilDate, setLabourUntilDate] = useState('');
+  const [labourShiftStart, setLabourShiftStart] = useState('09:00 AM');
+  const [labourShiftEnd, setLabourShiftEnd] = useState('05:00 PM');
+  const [showLabourShiftStartPicker, setShowLabourShiftStartPicker] = useState(false);
+  const [showLabourShiftEndPicker, setShowLabourShiftEndPicker] = useState(false);
 
   // Post Job Form State
   const [workType, setWorkType] = useState('Sowing');
@@ -146,6 +174,10 @@ export default function LabourHub() {
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date(Date.now() + 86400000).toISOString().split('T')[0]);
+  const [shiftStart, setShiftStart] = useState('09:00 AM');
+  const [shiftEnd, setShiftEnd] = useState('05:00 PM');
+  const [showShiftStartPicker, setShowShiftStartPicker] = useState(false);
+  const [showShiftEndPicker, setShowShiftEndPicker] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<LabourProfile | null>(null);
   const [showWorkerProfile, setShowWorkerProfile] = useState(false);
 
@@ -200,6 +232,8 @@ export default function LabourHub() {
           setLabourLocation(data.location?.name || '');
           setLabourFromDate(data.availableFrom || '');
           setLabourUntilDate(data.availableUntil || '');
+          setLabourShiftStart(data.shiftStart || '09:00 AM');
+          setLabourShiftEnd(data.shiftEnd || '05:00 PM');
 
           if (data.availableUntil) {
             const today = new Date().toISOString().split('T')[0];
@@ -255,6 +289,8 @@ export default function LabourHub() {
         startDate,
         endDate,
         date: `${startDate} to ${endDate}`,
+        shiftStart,
+        shiftEnd,
         description,
         status: 'Open',
         applicantIds: [],
@@ -292,6 +328,8 @@ export default function LabourHub() {
         availability: labourAvailability,
         availableFrom: labourFromDate,
         availableUntil: labourUntilDate,
+        shiftStart: labourShiftStart,
+        shiftEnd: labourShiftEnd,
         gender: labourGender,
         updatedAt: serverTimestamp(),
       };
@@ -403,7 +441,7 @@ export default function LabourHub() {
       <View style={[styles.card, { backgroundColor: c.surface }]}>
         <View style={styles.cardHeader}>
           <View style={styles.badgeRow}>
-            <View style={styles.badge}><Text style={styles.badgeText}>{item.workType}</Text></View>
+            <View style={styles.badge}><Text style={styles.badgeText}>{t.workTypes?.[item.workType] || item.workType}</Text></View>
             {isMatched && <View style={[styles.badge, { backgroundColor: '#E3F2FD' }]}><Text style={[styles.badgeText, { color: '#1976D2' }]}>✨ {t.skills} Match</Text></View>}
           </View>
           <Text style={styles.wageText}>₹{item.wage}/day</Text>
@@ -425,6 +463,7 @@ export default function LabourHub() {
           <Text style={styles.footerText}>👥 {applicantsCount}/{item.workersNeeded} Total</Text>
           <Text style={styles.footerText}>📅 {item.date}</Text>
         </View>
+        <Text style={[styles.footerText, { marginTop: 5, color: '#FF9800', fontWeight: 'bold' }]}>⏰ Shift: {item.shiftStart || '09:00 AM'} to {item.shiftEnd || '05:00 PM'}</Text>
         <Text style={[styles.footerText, { marginTop: 5, color: '#00C853', fontWeight: 'bold' }]}>📍 {item.location.name}</Text>
 
         {item.farmerId !== user?.uid ? (
@@ -529,7 +568,7 @@ export default function LabourHub() {
 
       <View style={styles.contentRow}>
         <Text style={{ fontSize: 18, marginRight: 8 }}>📦</Text>
-        <Text style={styles.contentText}>{item.skills[0] || 'General'}  •  {item.gender}</Text>
+        <Text style={styles.contentText}>{t.workTypes?.[item.skills[0]] || item.skills[0] || 'General'}  •  {item.gender}</Text>
       </View>
 
       <View style={styles.locationWrapper}>
@@ -546,9 +585,15 @@ export default function LabourHub() {
       <View style={styles.cardSeparator} />
 
       <View style={styles.cardBottom}>
-        <View style={styles.dateInfo}>
-          <Text style={{ fontSize: 14 }}>🕒</Text>
-          <Text style={styles.dateText}>{new Date().toISOString().split('T')[0]}</Text>
+        <View>
+          <View style={styles.dateInfo}>
+            <Text style={{ fontSize: 14 }}>📅</Text>
+            <Text style={styles.dateText}>{new Date().toISOString().split('T')[0]}</Text>
+          </View>
+          <View style={[styles.dateInfo, { marginTop: 4 }]}>
+            <Text style={{ fontSize: 14 }}>⏰</Text>
+            <Text style={styles.dateText}>{item.shiftStart || '09:00 AM'} - {item.shiftEnd || '05:00 PM'}</Text>
+          </View>
         </View>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <TouchableOpacity
@@ -640,7 +685,17 @@ export default function LabourHub() {
       ) : viewMode === 'action' ? (
         <ScrollView contentContainerStyle={styles.form}>
           <Text style={styles.label}>{t.typeOfWork}</Text>
-          <View style={styles.row}>{['Sowing', 'Harvesting', 'Weeding'].map(t => (<TouchableOpacity key={t} style={[styles.chip, workType === t && { backgroundColor: c.primary }]} onPress={() => setWorkType(t)}><Text style={[styles.chipText, workType === t && { color: '#fff' }]}>{t}</Text></TouchableOpacity>))}</View>
+          <View style={[styles.row, { flexWrap: 'wrap', rowGap: 10 }]}>
+            {AVAILABLE_SKILLS.map(skill => (
+              <TouchableOpacity 
+                key={skill} 
+                style={[styles.chip, workType === skill && { backgroundColor: c.primary }]} 
+                onPress={() => setWorkType(skill)}
+              >
+                <Text style={[styles.chipText, workType === skill && { color: '#fff' }]}>{t.workTypes?.[skill] || skill}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
           <View style={[styles.row, { marginTop: 15 }]}>
             <View style={{ flex: 1 }}>
               <Text style={styles.label}>{t.maleWorkers}</Text>
@@ -662,7 +717,7 @@ export default function LabourHub() {
 
           <View style={[styles.row, { marginTop: 15 }]}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Start Date</Text>
+              <Text style={styles.label}>{t.jobStartDate}</Text>
               <TouchableOpacity style={styles.dateSelector} onPress={() => setShowJobStartPicker(true)}>
                 <Text style={styles.dateSelectorText}>{formatDisplayDate(startDate)}</Text>
                 <IconSymbol name="calendar" size={16} color="#444" />
@@ -679,7 +734,7 @@ export default function LabourHub() {
               )}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>End Date</Text>
+              <Text style={styles.label}>{t.jobEndDate}</Text>
               <TouchableOpacity style={styles.dateSelector} onPress={() => setShowJobEndPicker(true)}>
                 <Text style={styles.dateSelectorText}>{formatDisplayDate(endDate)}</Text>
                 <IconSymbol name="calendar" size={16} color="#444" />
@@ -691,6 +746,43 @@ export default function LabourHub() {
                   onChange={(event, date) => {
                     setShowJobEndPicker(false);
                     if (date) setEndDate(date.toISOString().split('T')[0]);
+                  }}
+                />
+              )}
+            </View>
+          </View>
+
+          <View style={[styles.row, { marginTop: 15 }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>{t.shiftStartTime}</Text>
+              <TouchableOpacity style={styles.dateSelector} onPress={() => setShowShiftStartPicker(true)}>
+                <Text style={styles.dateSelectorText}>{shiftStart}</Text>
+                <IconSymbol name="clock" size={16} color="#444" />
+              </TouchableOpacity>
+              {showShiftStartPicker && (
+                <DateTimePicker
+                  value={parseTimeString(shiftStart)}
+                  mode="time"
+                  onChange={(event, date) => {
+                    setShowShiftStartPicker(false);
+                    if (date) setShiftStart(formatTimeString(date));
+                  }}
+                />
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>{t.shiftEndTime}</Text>
+              <TouchableOpacity style={styles.dateSelector} onPress={() => setShowShiftEndPicker(true)}>
+                <Text style={styles.dateSelectorText}>{shiftEnd}</Text>
+                <IconSymbol name="clock" size={16} color="#444" />
+              </TouchableOpacity>
+              {showShiftEndPicker && (
+                <DateTimePicker
+                  value={parseTimeString(shiftEnd)}
+                  mode="time"
+                  onChange={(event, date) => {
+                    setShowShiftEndPicker(false);
+                    if (date) setShiftEnd(formatTimeString(date));
                   }}
                 />
               )}
@@ -744,7 +836,7 @@ export default function LabourHub() {
 
           <View style={[styles.row, { marginTop: 10 }]}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>{t.availability} (From)</Text>
+              <Text style={styles.label}>{t.availableFromDateProfile}</Text>
               <TouchableOpacity style={styles.dateSelector} onPress={() => setShowFromPicker(true)}>
                 <Text style={styles.dateSelectorText}>{formatDisplayDate(labourFromDate)}</Text>
                 <IconSymbol name="calendar" size={16} color="#444" />
@@ -761,7 +853,7 @@ export default function LabourHub() {
               )}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>{t.availability} (To)</Text>
+              <Text style={styles.label}>{t.availableUntilDateProfile}</Text>
               <TouchableOpacity style={styles.dateSelector} onPress={() => setShowUntilPicker(true)}>
                 <Text style={styles.dateSelectorText}>{formatDisplayDate(labourUntilDate)}</Text>
                 <IconSymbol name="calendar" size={16} color="#444" />
@@ -773,6 +865,43 @@ export default function LabourHub() {
                   onChange={(event, date) => {
                     setShowUntilPicker(false);
                     if (date) setLabourUntilDate(date.toISOString().split('T')[0]);
+                  }}
+                />
+              )}
+            </View>
+          </View>
+
+          <View style={[styles.row, { marginTop: 10 }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>{t.shiftStartTime}</Text>
+              <TouchableOpacity style={styles.dateSelector} onPress={() => setShowLabourShiftStartPicker(true)}>
+                <Text style={styles.dateSelectorText}>{labourShiftStart}</Text>
+                <IconSymbol name="clock" size={16} color="#444" />
+              </TouchableOpacity>
+              {showLabourShiftStartPicker && (
+                <DateTimePicker
+                  value={parseTimeString(labourShiftStart)}
+                  mode="time"
+                  onChange={(event, date) => {
+                    setShowLabourShiftStartPicker(false);
+                    if (date) setLabourShiftStart(formatTimeString(date));
+                  }}
+                />
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>{t.shiftEndTime}</Text>
+              <TouchableOpacity style={styles.dateSelector} onPress={() => setShowLabourShiftEndPicker(true)}>
+                <Text style={styles.dateSelectorText}>{labourShiftEnd}</Text>
+                <IconSymbol name="clock" size={16} color="#444" />
+              </TouchableOpacity>
+              {showLabourShiftEndPicker && (
+                <DateTimePicker
+                  value={parseTimeString(labourShiftEnd)}
+                  mode="time"
+                  onChange={(event, date) => {
+                    setShowLabourShiftEndPicker(false);
+                    if (date) setLabourShiftEnd(formatTimeString(date));
                   }}
                 />
               )}
@@ -813,6 +942,11 @@ export default function LabourHub() {
                     label="Availability Range"
                     value={`${formatDisplayDate(selectedWorker.availableFrom)} to ${formatDisplayDate(selectedWorker.availableUntil)}`}
                     icon="📅"
+                  />
+                  <DetailRow 
+                    label="Preferred Shift" 
+                    value={`${selectedWorker.shiftStart || '09:00 AM'} to ${selectedWorker.shiftEnd || '05:00 PM'}`} 
+                    icon="⏰" 
                   />
                   <DetailRow label="Status" value={selectedWorker.availability} icon="🕒" />
                   <DetailRow label="Contact" value={formatPhone(selectedWorker.mobile)} icon="📱" />
