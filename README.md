@@ -1,5 +1,32 @@
 # Raitha Setu (AgriPulse) 🌾
 
+# App Logo
+<p align="center">
+  <img src="Public/icon.png" width="30%" />
+</p>
+
+# Different dashboard for 3 different Roles
+<p align="center">
+  <img src="Public/home.png" width="30%" />
+  <img src="Public/rhome.png" width="30%" />
+  <img src="Public/lhome.png" width="30%" />
+</p>
+<p align="center">
+  <img src="Public/profile.png" width="30%" />
+  <img src="Public/scheme.png" width="30%" />
+  <img src="Public/market.png" width="30%" />
+</p>
+<p align="center">
+  <img src="Public/APMC.png" width="30%" />
+  <img src="Public/Advisor.png" width="30%" />
+  <img src="Public/commu.png" width="30%" />
+</p>
+<p align="center">
+  <img src="Public/Rental.png" width="30%" />
+  <img src="Public/AI.png" width="30%" />
+  <img src="Public/hirel.png" width="30%" />
+</p>
+
 **Raitha Setu** is a comprehensive, mobile-first agricultural ecosystem designed to empower farmers with cutting-edge AI technology, real-time market data, and a collaborative community. Built with React Native and powered by Google Gemini AI, it serves as a digital companion for modern farming.
 
 ---
